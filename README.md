@@ -67,11 +67,9 @@ O arquivo de simulação encontra-se disponível no repositório.
 
 ## ▶️ Demonstração
 Vídeo de demonstração do funcionamento do sistema:
-📹
+- 📹
 
 ---
 
 ## 👨‍💻 Autor
 Projeto desenvolvido por **Daniel Neto**.
-
-## 📂 Estrutura do Repositório
