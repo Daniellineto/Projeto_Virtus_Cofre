@@ -20,7 +20,7 @@ const uint8_t digitos[10] = {
 
 // ---------------- VARIÁVEIS GLOBAIS ----------------
 volatile uint8_t senha[3] = {0, 0, 0};
-const uint8_t senha_correta[3] = {6, 9, 0};
+const uint8_t senha_correta[3] = {1, 2, 3};
 
 volatile uint8_t display_atual = 0;
 volatile uint8_t cofre_aberto = 0;
@@ -51,7 +51,7 @@ ISR(TIMER0_COMPA_vect)
 	if (display_atual > 2)
 	display_atual = 0;
 
-	// -------- CONTROLE DOS BIPS COM PAUSA --------
+	// -------- CONTROLE DOS BIPS --------
 	if (beep_count > 0)
 	{
 		beep_timer++;
@@ -155,8 +155,8 @@ int main(void)
 	// TIMER1 – PWM buzzer (~2 kHz)
 	TCCR1A = (1 << WGM11);
 	TCCR1B = (1 << WGM13) | (1 << WGM12) | (1 << CS11);
-	ICR1   = 999;    // frequência
-	OCR1A  = 500;    // duty 50%
+	ICR1   = 1499;    // frequência
+	OCR1A  = 750;    // duty 50%
 
 	// PCINT
 	PCICR  |= (1 << PCIE2);

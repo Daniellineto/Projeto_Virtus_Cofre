@@ -178,7 +178,7 @@ ISR(TIMER0_COMPA_vect)
 	display_atual = 0;
  118:	10 92 11 01 	sts	0x0111, r1	; 0x800111 <display_atual>
 
-	// -------- CONTROLE DOS BIPS COM PAUSA --------
+	// -------- CONTROLE DOS BIPS --------
 	if (beep_count > 0)
  11c:	80 91 0f 01 	lds	r24, 0x010F	; 0x80010f <beep_count>
  120:	88 23       	and	r24, r24
@@ -378,7 +378,7 @@ ISR(PCINT2_vect)
 	{
 		if (senha[0] == senha_correta[0] &&
  274:	80 91 12 01 	lds	r24, 0x0112	; 0x800112 <senha>
- 278:	86 30       	cpi	r24, 0x06	; 6
+ 278:	81 30       	cpi	r24, 0x01	; 1
  27a:	c9 f4       	brne	.+50     	; 0x2ae <__vector_5+0xc6>
 		senha[1] == senha_correta[1] &&
  27c:	80 91 13 01 	lds	r24, 0x0113	; 0x800113 <senha+0x1>
@@ -388,7 +388,7 @@ ISR(PCINT2_vect)
 	if (!(atual & (1 << PD4)) && (last & (1 << PD4)))
 	{
 		if (senha[0] == senha_correta[0] &&
- 280:	89 30       	cpi	r24, 0x09	; 9
+ 280:	82 30       	cpi	r24, 0x02	; 2
  282:	a9 f4       	brne	.+42     	; 0x2ae <__vector_5+0xc6>
 		senha[1] == senha_correta[1] &&
 		senha[2] == senha_correta[2])
@@ -399,8 +399,8 @@ ISR(PCINT2_vect)
 	{
 		if (senha[0] == senha_correta[0] &&
 		senha[1] == senha_correta[1] &&
- 288:	81 11       	cpse	r24, r1
- 28a:	11 c0       	rjmp	.+34     	; 0x2ae <__vector_5+0xc6>
+ 288:	83 30       	cpi	r24, 0x03	; 3
+ 28a:	89 f4       	brne	.+34     	; 0x2ae <__vector_5+0xc6>
 		senha[2] == senha_correta[2])
 		{
 			cofre_aberto ^= 1;
@@ -507,14 +507,14 @@ int main(void)
 	TCCR1B = (1 << WGM13) | (1 << WGM12) | (1 << CS11);
  30a:	8a e1       	ldi	r24, 0x1A	; 26
  30c:	80 93 81 00 	sts	0x0081, r24	; 0x800081 <__DATA_REGION_ORIGIN__+0x21>
-	ICR1   = 999;    // frequência
- 310:	87 ee       	ldi	r24, 0xE7	; 231
- 312:	93 e0       	ldi	r25, 0x03	; 3
+	ICR1   = 1499;    // frequência
+ 310:	8b ed       	ldi	r24, 0xDB	; 219
+ 312:	95 e0       	ldi	r25, 0x05	; 5
  314:	90 93 87 00 	sts	0x0087, r25	; 0x800087 <__DATA_REGION_ORIGIN__+0x27>
  318:	80 93 86 00 	sts	0x0086, r24	; 0x800086 <__DATA_REGION_ORIGIN__+0x26>
-	OCR1A  = 500;    // duty 50%
- 31c:	84 ef       	ldi	r24, 0xF4	; 244
- 31e:	91 e0       	ldi	r25, 0x01	; 1
+	OCR1A  = 750;    // duty 50%
+ 31c:	8e ee       	ldi	r24, 0xEE	; 238
+ 31e:	92 e0       	ldi	r25, 0x02	; 2
  320:	90 93 89 00 	sts	0x0089, r25	; 0x800089 <__DATA_REGION_ORIGIN__+0x29>
  324:	80 93 88 00 	sts	0x0088, r24	; 0x800088 <__DATA_REGION_ORIGIN__+0x28>
 
