@@ -19,7 +19,7 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   CONTENTS, READONLY, DEBUGGING
   7 .debug_abbrev 00000695  00000000  00000000  00000cdd  2**0
                   CONTENTS, READONLY, DEBUGGING
-  8 .debug_line   0000041d  00000000  00000000  00001372  2**0
+  8 .debug_line   0000041e  00000000  00000000  00001372  2**0
                   CONTENTS, READONLY, DEBUGGING
   9 .debug_frame  000000d8  00000000  00000000  00001790  2**2
                   CONTENTS, READONLY, DEBUGGING
@@ -101,11 +101,11 @@ Disassembly of section .text:
   a2:	0c 94 00 00 	jmp	0	; 0x0 <__vectors>
 
 000000a6 <ativa_display>:
-
-
-// ---------------- DISPLAY ----------------
+ * FUNÇÃO DE ATIVAÇÃO DOS DISPLAYS (MULTIPLEXAÇÃO)
+ * ===================================================== */
 void ativa_display(uint8_t d)
 {
+	// Desliga todos os displays
 	PORTD &= ~(1 << PD5);
   a6:	5d 98       	cbi	0x0b, 5	; 11
 	PORTB &= ~((1 << PB6) | (1 << PB7));
@@ -113,6 +113,7 @@ void ativa_display(uint8_t d)
   aa:	9f 73       	andi	r25, 0x3F	; 63
   ac:	95 b9       	out	0x05, r25	; 5
 
+	// Ativa apenas o display selecionado
 	if (d == 0) PORTB |= (1 << PB6);
   ae:	81 11       	cpse	r24, r1
   b0:	02 c0       	rjmp	.+4      	; 0xb6 <ativa_display+0x10>
@@ -130,9 +131,10 @@ void ativa_display(uint8_t d)
   c4:	08 95       	ret
 
 000000c6 <__vector_14>:
-}
-
-// ---------------- TIMER0 (1 ms) ----------------
+ * INTERRUPÇÃO DO TIMER0 (1 ms)
+ * - Multiplexação dos displays
+ * - Controle de bips do buzzer
+ * ===================================================== */
 ISR(TIMER0_COMPA_vect)
 {
   c6:	1f 92       	push	r1
@@ -152,6 +154,7 @@ ISR(TIMER0_COMPA_vect)
   e2:	bf 93       	push	r27
   e4:	ef 93       	push	r30
   e6:	ff 93       	push	r31
+	// Atualiza segmentos do display atual
 	PORTC = digitos[ senha[display_atual] ];
   e8:	e0 91 11 01 	lds	r30, 0x0111	; 0x800111 <display_atual>
   ec:	f0 e0       	ldi	r31, 0x00	; 0
@@ -167,6 +170,7 @@ ISR(TIMER0_COMPA_vect)
   fe:	80 91 11 01 	lds	r24, 0x0111	; 0x800111 <display_atual>
  102:	0e 94 53 00 	call	0xa6	; 0xa6 <ativa_display>
 
+	// Avança para o próximo display
 	display_atual++;
  106:	80 91 11 01 	lds	r24, 0x0111	; 0x800111 <display_atual>
  10a:	8f 5f       	subi	r24, 0xFF	; 255
@@ -175,10 +179,10 @@ ISR(TIMER0_COMPA_vect)
  110:	80 91 11 01 	lds	r24, 0x0111	; 0x800111 <display_atual>
  114:	83 30       	cpi	r24, 0x03	; 3
  116:	10 f0       	brcs	.+4      	; 0x11c <__vector_14+0x56>
-	display_atual = 0;
+		display_atual = 0;
  118:	10 92 11 01 	sts	0x0111, r1	; 0x800111 <display_atual>
 
-	// -------- CONTROLE DOS BIPS --------
+	/* -------- CONTROLE DOS BIPS DO BUZZER -------- */
 	if (beep_count > 0)
  11c:	80 91 0f 01 	lds	r24, 0x010F	; 0x80010f <beep_count>
  120:	88 23       	and	r24, r24
@@ -197,8 +201,8 @@ ISR(TIMER0_COMPA_vect)
  13c:	81 11       	cpse	r24, r1
  13e:	0d c0       	rjmp	.+26     	; 0x15a <__vector_14+0x94>
 		{
-			// inicia bip
-			TCCR1A |= (1 << COM1A1);   // liga PWM
+			// Início do bip
+			TCCR1A |= (1 << COM1A1);   // habilita PWM
  140:	e0 e8       	ldi	r30, 0x80	; 128
  142:	f0 e0       	ldi	r31, 0x00	; 0
  144:	80 81       	ld	r24, Z
@@ -212,7 +216,6 @@ ISR(TIMER0_COMPA_vect)
  154:	10 92 0d 01 	sts	0x010D, r1	; 0x80010d <beep_timer>
  158:	36 c0       	rjmp	.+108    	; 0x1c6 <__vector_14+0x100>
 		}
-
 		else if (buzzer_state == 1 && beep_timer >= 200)
  15a:	80 91 0c 01 	lds	r24, 0x010C	; 0x80010c <__data_end>
  15e:	81 30       	cpi	r24, 0x01	; 1
@@ -223,8 +226,8 @@ ISR(TIMER0_COMPA_vect)
  16c:	91 05       	cpc	r25, r1
  16e:	68 f0       	brcs	.+26     	; 0x18a <__vector_14+0xc4>
 		{
-			// fim do bip
-			TCCR1A &= ~(1 << COM1A1); // desliga PWM
+			// Fim do bip
+			TCCR1A &= ~(1 << COM1A1);  // desabilita PWM
  170:	e0 e8       	ldi	r30, 0x80	; 128
  172:	f0 e0       	ldi	r31, 0x00	; 0
  174:	80 81       	ld	r24, Z
@@ -238,7 +241,6 @@ ISR(TIMER0_COMPA_vect)
  184:	10 92 0d 01 	sts	0x010D, r1	; 0x80010d <beep_timer>
  188:	1e c0       	rjmp	.+60     	; 0x1c6 <__vector_14+0x100>
 		}
-
 		else if (buzzer_state == 2 && beep_timer >= 150)
  18a:	80 91 0c 01 	lds	r24, 0x010C	; 0x80010c <__data_end>
  18e:	82 30       	cpi	r24, 0x02	; 2
@@ -249,7 +251,7 @@ ISR(TIMER0_COMPA_vect)
  19c:	91 05       	cpc	r25, r1
  19e:	98 f0       	brcs	.+38     	; 0x1c6 <__vector_14+0x100>
 		{
-			// fim da pausa
+			// Fim da pausa entre bips
 			buzzer_state = 0;
  1a0:	10 92 0c 01 	sts	0x010C, r1	; 0x80010c <__data_end>
 			beep_timer = 0;
@@ -264,7 +266,7 @@ ISR(TIMER0_COMPA_vect)
 	}
 	else
 	{
-		// garante buzzer desligado
+		// Garante que o buzzer permaneça desligado
 		TCCR1A &= ~(1 << COM1A1);
  1b8:	e0 e8       	ldi	r30, 0x80	; 128
  1ba:	f0 e0       	ldi	r31, 0x00	; 0
@@ -294,8 +296,10 @@ ISR(TIMER0_COMPA_vect)
  1e6:	18 95       	reti
 
 000001e8 <__vector_5>:
-
-// ---------------- BOTÕES (PCINT) ----------------
+ * - Leitura dos botões
+ * - Incremento da senha
+ * - Confirmação da senha
+ * ===================================================== */
 ISR(PCINT2_vect)
 {
  1e8:	1f 92       	push	r1
@@ -317,13 +321,14 @@ ISR(PCINT2_vect)
 	uint8_t atual = PIND;
  206:	29 b1       	in	r18, 0x09	; 9
 
+	// Incrementa cada dígito da senha
 	if (!(atual & (1 << PD1)) && (last & (1 << PD1)))
  208:	21 fd       	sbrc	r18, 1
  20a:	0e c0       	rjmp	.+28     	; 0x228 <__vector_5+0x40>
  20c:	80 91 00 01 	lds	r24, 0x0100	; 0x800100 <__data_start>
  210:	81 ff       	sbrs	r24, 1
  212:	0a c0       	rjmp	.+20     	; 0x228 <__vector_5+0x40>
-	senha[0] = (senha[0] + 1) % 10;
+		senha[0] = (senha[0] + 1) % 10;
  214:	e2 e1       	ldi	r30, 0x12	; 18
  216:	f1 e0       	ldi	r31, 0x01	; 1
  218:	80 81       	ld	r24, Z
@@ -340,7 +345,7 @@ ISR(PCINT2_vect)
  22c:	80 91 00 01 	lds	r24, 0x0100	; 0x800100 <__data_start>
  230:	82 ff       	sbrs	r24, 2
  232:	0a c0       	rjmp	.+20     	; 0x248 <__vector_5+0x60>
-	senha[1] = (senha[1] + 1) % 10;
+		senha[1] = (senha[1] + 1) % 10;
  234:	e2 e1       	ldi	r30, 0x12	; 18
  236:	f1 e0       	ldi	r31, 0x01	; 1
  238:	81 81       	ldd	r24, Z+1	; 0x01
@@ -357,7 +362,7 @@ ISR(PCINT2_vect)
  24c:	80 91 00 01 	lds	r24, 0x0100	; 0x800100 <__data_start>
  250:	83 ff       	sbrs	r24, 3
  252:	0a c0       	rjmp	.+20     	; 0x268 <__vector_5+0x80>
-	senha[2] = (senha[2] + 1) % 10;
+		senha[2] = (senha[2] + 1) % 10;
  254:	e2 e1       	ldi	r30, 0x12	; 18
  256:	f1 e0       	ldi	r31, 0x01	; 1
  258:	82 81       	ldd	r24, Z+2	; 0x02
@@ -368,7 +373,7 @@ ISR(PCINT2_vect)
  262:	0e 94 a9 01 	call	0x352	; 0x352 <__divmodhi4>
  266:	82 83       	std	Z+2, r24	; 0x02
 
-	// CONFIRMAR
+	// Botão de confirmação
 	if (!(atual & (1 << PD4)) && (last & (1 << PD4)))
  268:	24 fd       	sbrc	r18, 4
  26a:	21 c0       	rjmp	.+66     	; 0x2ae <__vector_5+0xc6>
@@ -376,49 +381,52 @@ ISR(PCINT2_vect)
  270:	84 ff       	sbrs	r24, 4
  272:	1d c0       	rjmp	.+58     	; 0x2ae <__vector_5+0xc6>
 	{
+		// Verifica se a senha está correta
 		if (senha[0] == senha_correta[0] &&
  274:	80 91 12 01 	lds	r24, 0x0112	; 0x800112 <senha>
  278:	81 30       	cpi	r24, 0x01	; 1
  27a:	c9 f4       	brne	.+50     	; 0x2ae <__vector_5+0xc6>
-		senha[1] == senha_correta[1] &&
+		    senha[1] == senha_correta[1] &&
  27c:	80 91 13 01 	lds	r24, 0x0113	; 0x800113 <senha+0x1>
-	senha[2] = (senha[2] + 1) % 10;
 
-	// CONFIRMAR
+	// Botão de confirmação
 	if (!(atual & (1 << PD4)) && (last & (1 << PD4)))
 	{
+		// Verifica se a senha está correta
 		if (senha[0] == senha_correta[0] &&
  280:	82 30       	cpi	r24, 0x02	; 2
  282:	a9 f4       	brne	.+42     	; 0x2ae <__vector_5+0xc6>
-		senha[1] == senha_correta[1] &&
-		senha[2] == senha_correta[2])
+		    senha[1] == senha_correta[1] &&
+		    senha[2] == senha_correta[2])
  284:	80 91 14 01 	lds	r24, 0x0114	; 0x800114 <senha+0x2>
-
-	// CONFIRMAR
+	// Botão de confirmação
 	if (!(atual & (1 << PD4)) && (last & (1 << PD4)))
 	{
+		// Verifica se a senha está correta
 		if (senha[0] == senha_correta[0] &&
-		senha[1] == senha_correta[1] &&
+		    senha[1] == senha_correta[1] &&
  288:	83 30       	cpi	r24, 0x03	; 3
  28a:	89 f4       	brne	.+34     	; 0x2ae <__vector_5+0xc6>
-		senha[2] == senha_correta[2])
+		    senha[2] == senha_correta[2])
 		{
+			// Alterna estado do cofre
 			cofre_aberto ^= 1;
  28c:	90 91 10 01 	lds	r25, 0x0110	; 0x800110 <cofre_aberto>
  290:	81 e0       	ldi	r24, 0x01	; 1
  292:	89 27       	eor	r24, r25
  294:	80 93 10 01 	sts	0x0110, r24	; 0x800110 <cofre_aberto>
 
+			// Define quantidade de bips
 			if (cofre_aberto)
  298:	80 91 10 01 	lds	r24, 0x0110	; 0x800110 <cofre_aberto>
  29c:	88 23       	and	r24, r24
  29e:	21 f0       	breq	.+8      	; 0x2a8 <__vector_5+0xc0>
-			beep_count = 2; // abriu
+				beep_count = 2; // abriu
  2a0:	82 e0       	ldi	r24, 0x02	; 2
  2a2:	80 93 0f 01 	sts	0x010F, r24	; 0x80010f <beep_count>
  2a6:	03 c0       	rjmp	.+6      	; 0x2ae <__vector_5+0xc6>
 			else
-			beep_count = 1; // fechou
+				beep_count = 1; // fechou
  2a8:	81 e0       	ldi	r24, 0x01	; 1
  2aa:	80 93 0f 01 	sts	0x010F, r24	; 0x80010f <beep_count>
 		}
@@ -444,17 +452,17 @@ ISR(PCINT2_vect)
  2ce:	18 95       	reti
 
 000002d0 <main>:
-
-// ---------------- MAIN ----------------
 int main(void)
 {
-	// Segmentos
+	/* -------- CONFIGURAÇÃO DE I/O -------- */
+
+	// Segmentos do display
 	DDRC |= 0b01111111;
  2d0:	87 b1       	in	r24, 0x07	; 7
  2d2:	8f 67       	ori	r24, 0x7F	; 127
  2d4:	87 b9       	out	0x07, r24	; 7
 
-	// Displays
+	// Controle dos displays (transistores)
 	DDRD |= (1 << PD5);
  2d6:	55 9a       	sbi	0x0a, 5	; 10
 	DDRB |= (1 << PB6) | (1 << PB7);
@@ -462,7 +470,7 @@ int main(void)
  2da:	80 6c       	ori	r24, 0xC0	; 192
  2dc:	84 b9       	out	0x04, r24	; 4
 
-	// Botões
+	// Botões com pull-up
 	DDRD &= ~((1 << PD1)|(1 << PD2)|(1 << PD3)|(1 << PD4));
  2de:	8a b1       	in	r24, 0x0a	; 10
  2e0:	81 7e       	andi	r24, 0xE1	; 225
@@ -478,17 +486,17 @@ int main(void)
  2ec:	88 61       	ori	r24, 0x18	; 24
  2ee:	84 b9       	out	0x04, r24	; 4
 
-	// BUZZER PWM PB1 (OC1A)
+	// Buzzer (PWM - OC1A)
 	DDRB |= (1 << PB1);
  2f0:	21 9a       	sbi	0x04, 1	; 4
 
-	// LED inicial
+	// Estado inicial: cofre fechado (vermelho)
 	PORTB |= (1 << PB4);
  2f2:	2c 9a       	sbi	0x05, 4	; 5
 	PORTB &= ~(1 << PB3);
  2f4:	2b 98       	cbi	0x05, 3	; 5
 
-	// TIMER0 – multiplexação
+	/* -------- TIMER0 (1 ms) -------- */
 	TCCR0A = (1 << WGM01);
  2f6:	82 e0       	ldi	r24, 0x02	; 2
  2f8:	84 bd       	out	0x24, r24	; 36
@@ -501,24 +509,24 @@ int main(void)
  302:	93 e0       	ldi	r25, 0x03	; 3
  304:	95 bd       	out	0x25, r25	; 37
 
-	// TIMER1 – PWM buzzer (~2 kHz)
+	/* -------- TIMER1 (PWM do buzzer ~2 kHz) -------- */
 	TCCR1A = (1 << WGM11);
  306:	80 93 80 00 	sts	0x0080, r24	; 0x800080 <__DATA_REGION_ORIGIN__+0x20>
 	TCCR1B = (1 << WGM13) | (1 << WGM12) | (1 << CS11);
  30a:	8a e1       	ldi	r24, 0x1A	; 26
  30c:	80 93 81 00 	sts	0x0081, r24	; 0x800081 <__DATA_REGION_ORIGIN__+0x21>
-	ICR1   = 1499;    // frequência
+	ICR1   = 1499;
  310:	8b ed       	ldi	r24, 0xDB	; 219
  312:	95 e0       	ldi	r25, 0x05	; 5
  314:	90 93 87 00 	sts	0x0087, r25	; 0x800087 <__DATA_REGION_ORIGIN__+0x27>
  318:	80 93 86 00 	sts	0x0086, r24	; 0x800086 <__DATA_REGION_ORIGIN__+0x26>
-	OCR1A  = 750;    // duty 50%
+	OCR1A  = 750;
  31c:	8e ee       	ldi	r24, 0xEE	; 238
  31e:	92 e0       	ldi	r25, 0x02	; 2
  320:	90 93 89 00 	sts	0x0089, r25	; 0x800089 <__DATA_REGION_ORIGIN__+0x29>
  324:	80 93 88 00 	sts	0x0088, r24	; 0x800088 <__DATA_REGION_ORIGIN__+0x28>
 
-	// PCINT
+	/* -------- INTERRUPÇÕES DE PINO -------- */
 	PCICR  |= (1 << PCIE2);
  328:	e8 e6       	ldi	r30, 0x68	; 104
  32a:	f0 e0       	ldi	r31, 0x00	; 0
@@ -535,24 +543,26 @@ int main(void)
 	sei();
  33c:	78 94       	sei
 
+	/* -------- LOOP PRINCIPAL -------- */
 	while (1)
 	{
+		// Atualiza LED RGB conforme estado do cofre
 		if (cofre_aberto)
  33e:	80 91 10 01 	lds	r24, 0x0110	; 0x800110 <cofre_aberto>
  342:	88 23       	and	r24, r24
  344:	19 f0       	breq	.+6      	; 0x34c <main+0x7c>
 		{
-			PORTB |= (1 << PB3);
+			PORTB |= (1 << PB3);   // verde ON
  346:	2b 9a       	sbi	0x05, 3	; 5
-			PORTB &= ~(1 << PB4);
+			PORTB &= ~(1 << PB4);  // vermelho OFF
  348:	2c 98       	cbi	0x05, 4	; 5
  34a:	f9 cf       	rjmp	.-14     	; 0x33e <main+0x6e>
 		}
 		else
 		{
-			PORTB |= (1 << PB4);
+			PORTB |= (1 << PB4);   // vermelho ON
  34c:	2c 9a       	sbi	0x05, 4	; 5
-			PORTB &= ~(1 << PB3);
+			PORTB &= ~(1 << PB3);  // verde OFF
  34e:	2b 98       	cbi	0x05, 3	; 5
  350:	f6 cf       	rjmp	.-20     	; 0x33e <main+0x6e>
 

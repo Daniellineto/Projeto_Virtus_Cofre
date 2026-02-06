@@ -1,10 +1,18 @@
-
 #define F_CPU 16000000UL
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-// Segmentos: PC6=a, PC5=b, PC4=c, PC3=d, PC2=e, PC1=f, PC0=g
+/*
+ * Mapeamento dos segmentos do display de 7 segmentos
+ * PC6 = segmento A
+ * PC5 = segmento B
+ * PC4 = segmento C
+ * PC3 = segmento D
+ * PC2 = segmento E
+ * PC1 = segmento F
+ * PC0 = segmento G
+ */
 const uint8_t digitos[10] = {
 	0b01111110, // 0
 	0b00110000, // 1
@@ -18,63 +26,83 @@ const uint8_t digitos[10] = {
 	0b01111011  // 9
 };
 
-// ---------------- VARIÁVEIS GLOBAIS ----------------
+/* =====================================================
+ * VARIÁVEIS GLOBAIS
+ * ===================================================== */
+
+// Senha digitada pelo usuário
 volatile uint8_t senha[3] = {0, 0, 0};
+
+// Senha correta do cofre
 const uint8_t senha_correta[3] = {1, 2, 3};
 
+// Controle da multiplexação dos displays
 volatile uint8_t display_atual = 0;
+
+// Estado do cofre
+// 0 = fechado | 1 = aberto
 volatile uint8_t cofre_aberto = 0;
 
-volatile uint8_t beep_count = 0;
-volatile uint16_t beep_timer = 0;
-volatile uint8_t buzzer_state = 0; // 0 = parado, 1 = tocando, 2 = pausa
+// Controle do buzzer
+volatile uint8_t  beep_count  = 0;   // quantidade de bips restantes
+volatile uint16_t beep_timer  = 0;   // temporizador de cada bip
+volatile uint8_t  buzzer_state = 0;  // 0 = parado | 1 = tocando | 2 = pausa
 
 
-// ---------------- DISPLAY ----------------
+/* =====================================================
+ * FUNÇÃO DE ATIVAÇÃO DOS DISPLAYS (MULTIPLEXAÇÃO)
+ * ===================================================== */
 void ativa_display(uint8_t d)
 {
+	// Desliga todos os displays
 	PORTD &= ~(1 << PD5);
 	PORTB &= ~((1 << PB6) | (1 << PB7));
 
+	// Ativa apenas o display selecionado
 	if (d == 0) PORTB |= (1 << PB6);
 	if (d == 1) PORTB |= (1 << PB7);
 	if (d == 2) PORTD |= (1 << PD5);
 }
 
-// ---------------- TIMER0 (1 ms) ----------------
+
+/* =====================================================
+ * INTERRUPÇÃO DO TIMER0 (1 ms)
+ * - Multiplexação dos displays
+ * - Controle de bips do buzzer
+ * ===================================================== */
 ISR(TIMER0_COMPA_vect)
 {
+	// Atualiza segmentos do display atual
 	PORTC = digitos[ senha[display_atual] ];
 	ativa_display(display_atual);
 
+	// Avança para o próximo display
 	display_atual++;
 	if (display_atual > 2)
-	display_atual = 0;
+		display_atual = 0;
 
-	// -------- CONTROLE DOS BIPS --------
+	/* -------- CONTROLE DOS BIPS DO BUZZER -------- */
 	if (beep_count > 0)
 	{
 		beep_timer++;
 
 		if (buzzer_state == 0)
 		{
-			// inicia bip
-			TCCR1A |= (1 << COM1A1);   // liga PWM
+			// Início do bip
+			TCCR1A |= (1 << COM1A1);   // habilita PWM
 			buzzer_state = 1;
 			beep_timer = 0;
 		}
-
 		else if (buzzer_state == 1 && beep_timer >= 200)
 		{
-			// fim do bip
-			TCCR1A &= ~(1 << COM1A1); // desliga PWM
+			// Fim do bip
+			TCCR1A &= ~(1 << COM1A1);  // desabilita PWM
 			buzzer_state = 2;
 			beep_timer = 0;
 		}
-
 		else if (buzzer_state == 2 && beep_timer >= 150)
 		{
-			// fim da pausa
+			// Fim da pausa entre bips
 			buzzer_state = 0;
 			beep_timer = 0;
 			beep_count--;
@@ -82,99 +110,116 @@ ISR(TIMER0_COMPA_vect)
 	}
 	else
 	{
-		// garante buzzer desligado
+		// Garante que o buzzer permaneça desligado
 		TCCR1A &= ~(1 << COM1A1);
 		buzzer_state = 0;
 	}
 }
 
-// ---------------- BOTÕES (PCINT) ----------------
+
+/* =====================================================
+ * INTERRUPÇÃO DE MUDANÇA DE PINO (PCINT)
+ * - Leitura dos botões
+ * - Incremento da senha
+ * - Confirmação da senha
+ * ===================================================== */
 ISR(PCINT2_vect)
 {
 	static uint8_t last = 0xFF;
 	uint8_t atual = PIND;
 
+	// Incrementa cada dígito da senha
 	if (!(atual & (1 << PD1)) && (last & (1 << PD1)))
-	senha[0] = (senha[0] + 1) % 10;
+		senha[0] = (senha[0] + 1) % 10;
 
 	if (!(atual & (1 << PD2)) && (last & (1 << PD2)))
-	senha[1] = (senha[1] + 1) % 10;
+		senha[1] = (senha[1] + 1) % 10;
 
 	if (!(atual & (1 << PD3)) && (last & (1 << PD3)))
-	senha[2] = (senha[2] + 1) % 10;
+		senha[2] = (senha[2] + 1) % 10;
 
-	// CONFIRMAR
+	// Botão de confirmação
 	if (!(atual & (1 << PD4)) && (last & (1 << PD4)))
 	{
+		// Verifica se a senha está correta
 		if (senha[0] == senha_correta[0] &&
-		senha[1] == senha_correta[1] &&
-		senha[2] == senha_correta[2])
+		    senha[1] == senha_correta[1] &&
+		    senha[2] == senha_correta[2])
 		{
+			// Alterna estado do cofre
 			cofre_aberto ^= 1;
 
+			// Define quantidade de bips
 			if (cofre_aberto)
-			beep_count = 2; // abriu
+				beep_count = 2; // abriu
 			else
-			beep_count = 1; // fechou
+				beep_count = 1; // fechou
 		}
 	}
 
 	last = atual;
 }
 
-// ---------------- MAIN ----------------
+
+/* =====================================================
+ * FUNÇÃO PRINCIPAL
+ * ===================================================== */
 int main(void)
 {
-	// Segmentos
+	/* -------- CONFIGURAÇÃO DE I/O -------- */
+
+	// Segmentos do display
 	DDRC |= 0b01111111;
 
-	// Displays
+	// Controle dos displays (transistores)
 	DDRD |= (1 << PD5);
 	DDRB |= (1 << PB6) | (1 << PB7);
 
-	// Botões
+	// Botões com pull-up
 	DDRD &= ~((1 << PD1)|(1 << PD2)|(1 << PD3)|(1 << PD4));
 	PORTD |=  (1 << PD1)|(1 << PD2)|(1 << PD3)|(1 << PD4);
 
 	// LED RGB
 	DDRB |= (1 << PB3) | (1 << PB4);
 
-	// BUZZER PWM PB1 (OC1A)
+	// Buzzer (PWM - OC1A)
 	DDRB |= (1 << PB1);
 
-	// LED inicial
+	// Estado inicial: cofre fechado (vermelho)
 	PORTB |= (1 << PB4);
 	PORTB &= ~(1 << PB3);
 
-	// TIMER0 – multiplexação
+	/* -------- TIMER0 (1 ms) -------- */
 	TCCR0A = (1 << WGM01);
 	OCR0A  = 249;
 	TIMSK0 = (1 << OCIE0A);
 	TCCR0B = (1 << CS01) | (1 << CS00);
 
-	// TIMER1 – PWM buzzer (~2 kHz)
+	/* -------- TIMER1 (PWM do buzzer ~2 kHz) -------- */
 	TCCR1A = (1 << WGM11);
 	TCCR1B = (1 << WGM13) | (1 << WGM12) | (1 << CS11);
-	ICR1   = 1499;    // frequência
-	OCR1A  = 750;    // duty 50%
+	ICR1   = 1499;
+	OCR1A  = 750;
 
-	// PCINT
+	/* -------- INTERRUPÇÕES DE PINO -------- */
 	PCICR  |= (1 << PCIE2);
 	PCMSK2 |= (1 << PD1)|(1 << PD2)|(1 << PD3)|(1 << PD4);
 
 	sei();
 
+	/* -------- LOOP PRINCIPAL -------- */
 	while (1)
 	{
+		// Atualiza LED RGB conforme estado do cofre
 		if (cofre_aberto)
 		{
-			PORTB |= (1 << PB3);
-			PORTB &= ~(1 << PB4);
+			PORTB |= (1 << PB3);   // verde ON
+			PORTB &= ~(1 << PB4);  // vermelho OFF
 		}
 		else
 		{
-			PORTB |= (1 << PB4);
-			PORTB &= ~(1 << PB3);
+			PORTB |= (1 << PB4);   // vermelho ON
+			PORTB &= ~(1 << PB3);  // verde OFF
 		}
 	}
 }
