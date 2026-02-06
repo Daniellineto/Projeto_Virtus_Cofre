@@ -141,21 +141,30 @@ ISR(PCINT2_vect)
 	// Botão de confirmação
 	if (!(atual & (1 << PD4)) && (last & (1 << PD4)))
 	{
-		// Verifica se a senha está correta
+		// SENHA CORRETA
 		if (senha[0] == senha_correta[0] &&
-		    senha[1] == senha_correta[1] &&
-		    senha[2] == senha_correta[2])
+		senha[1] == senha_correta[1] &&
+		senha[2] == senha_correta[2])
 		{
-			// Alterna estado do cofre
 			cofre_aberto ^= 1;
 
-			// Define quantidade de bips
+			beep_timer = 0;
+			buzzer_state = 0;
+
 			if (cofre_aberto)
-				beep_count = 2; // abriu
+			beep_count = 2;   // abriu
 			else
-				beep_count = 1; // fechou
+			beep_count = 1;   // fechou
+		}
+		// SENHA ERRADA E COFRE FECHADO
+		else if (!cofre_aberto)
+		{
+			beep_timer = 0;
+			buzzer_state = 0;
+			beep_count = 10;  // alarme de erro
 		}
 	}
+
 
 	last = atual;
 }
