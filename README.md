@@ -27,12 +27,13 @@ O projeto simula um **cofre digital**, permitindo a inserção de senha e fornec
 - Buzzer com PWM:
   - 🔊 2 bips ao abrir o cofre
   - 🔊 1 bip ao fechar o cofre
+  - 🔊 bip constante quando erra a senha com o cofre fechado
 - Uso de interrupções para leitura de botões e controle de tempo
 
 ---
 
 ## 🧩 Componentes Utilizados
-- Microcontrolador AVR (ex: ATmega328)
+- Microcontrolador ATmega328
 - 3 Displays de 7 segmentos (catodo comum)
 - Botões de pressão
 - LED RGB
@@ -67,7 +68,7 @@ O arquivo de simulação encontra-se disponível no repositório.
 
 ## ▶️ Demonstração
 Vídeo de demonstração do funcionamento do sistema:
-- 📹 [Video de Demonstração](https://www.youtube.com/watch?v=F_qEqBsu8xo)
+- 📹 [Video de Demonstração]()
 
 
 ---
