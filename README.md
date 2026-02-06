@@ -67,7 +67,8 @@ O arquivo de simulação encontra-se disponível no repositório.
 
 ## ▶️ Demonstração
 Vídeo de demonstração do funcionamento do sistema:
-- 📹
+- 📹 [Video de Demonstração](https://www.youtube.com/watch?v=F_qEqBsu8xo)
+
 
 ---
 
